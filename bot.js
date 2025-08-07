@@ -18,7 +18,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const bot = new Telegraf(botToken);
 
 // 1. Start/help commands
-const adminContact = "For urgent help, message admin at:\n📧 support@harshportal.in\n📱 WhatsApp: +91 9968896059";
+const adminContact = "For urgent help, message admin at:\n📧 support@harshportal.in\n📱 Telegram: @harshportal";
 const commandMenu =
   `*Commands:*\n` +
   `/order <orderId> - Get order details\n` +
