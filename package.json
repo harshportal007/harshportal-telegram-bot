@@ -3,14 +3,13 @@
   "name": "harshportal-telegram-bot",
   "version": "1.0.0",
   "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node bot.js"
-  },
-  "engines": {
+ "scripts": {
+  "test": "echo \"Error: no test specified\" && exit 1",
+  "start": "node bot.js"
+},
+"engines": {
   "node": "20.x"
 },
-
   "keywords": [],
   "author": "",
   "license": "ISC",
