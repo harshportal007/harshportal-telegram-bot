@@ -11,14 +11,29 @@ const botToken = process.env.TELEGRAM_BOT_TOKEN;
 const supabase = createClient(supabaseUrl, supabaseKey);
 const bot = new Telegraf(botToken);
 
-// 1. Start command
 bot.start((ctx) =>
-  ctx.reply('Welcome to Harshportal Support! Type your question, or use /help to see commands.')
+  ctx.reply(
+    `👋 Welcome to Harshportal Support Bot!\n\n` +
+    `You can ask about your orders, products, account, or any help you need.\n\n` +
+    `*Commands you can use:*\n` +
+    `/order <orderId> - Get order details\n` +
+    `/product <product name> - Get product info\n` +
+    `/user <email> - Get user details\n` +
+    `/help - Show this help menu\n\n` +
+    `Or just type your question!`
+  )
 );
 
-// 2. Help command
+// 2. /help handler (same as above, or even more detailed)
 bot.command('help', (ctx) =>
-  ctx.reply(`/order [orderId] — check order status\n/product [name] — get product info\n/user [email] — lookup user\n\nOr just ask your question!`)
+  ctx.reply(
+    `*Harshportal Bot Help:*\n\n` +
+    `/order <orderId> - Show your order status\n` +
+    `/product <product name> - Look up product details\n` +
+    `/user <email> - Look up user info\n` +
+    `/help - Show this menu\n\n` +
+    `Try typing: /product Netflix`
+  )
 );
 
 // 3. Order status lookup
@@ -72,11 +87,6 @@ bot.command('user', async (ctx) => {
 });
 
 // 6. Greetings handler
-bot.hears(/^(hi|hello|hey|hii|hiiii|hola|yo|sup)$/i, (ctx) => {
-  ctx.reply('Hello! 👋 How can I help you today?');
-});
-
-// 7. FAQ fallback (always LAST!)
 bot.on('text', async (ctx) => {
   const userText = ctx.message.text;
   const { data, error } = await supabase
@@ -87,7 +97,11 @@ bot.on('text', async (ctx) => {
   if (data && data.length > 0) {
     ctx.reply(data[0].answer);
   } else {
-    ctx.reply('Sorry, I do not have an answer for that yet. Please contact support@harshportal.in or ask in another way!');
+    ctx.reply(
+      "Sorry, I do not have an answer for that yet.\n\n" +
+      "💡 *Tip*: Use /help to see all commands!\n" +
+      "Or contact support@harshportal.in."
+    );
   }
 });
 
