@@ -3,91 +3,76 @@ require('dotenv').config();
 const { Telegraf } = require('telegraf');
 const { createClient } = require('@supabase/supabase-js');
 
-// Env variables
+// -- Set up environment variables
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
 const botToken = process.env.TELEGRAM_BOT_TOKEN;
 
+// -- Admin Telegram user ID (get from @userinfobot or your own Telegram ID)
+const ADMIN_ID = 7057639075; // <<< REPLACE with your real Telegram user ID
+
+// -- Initialize Supabase (optional)
 const supabase = createClient(supabaseUrl, supabaseKey);
+
+// -- Initialize bot
 const bot = new Telegraf(botToken);
 
-bot.start((ctx) =>
-  ctx.reply(
-    `👋 Welcome to Harshportal Support Bot!\n\n` +
-    `You can ask about your orders, products, account, or any help you need.\n\n` +
-    `*Commands you can use:*\n` +
-    `/order <orderId> - Get order details\n` +
-    `/product <product name> - Get product info\n` +
-    `/user <email> - Get user details\n` +
-    `/help - Show this help menu\n\n` +
-    `Or just type your question!`
-  )
-);
+// 1. Start/help commands
+const adminContact = "For urgent help, message admin at:\n📧 support@harshportal.in\n📱 WhatsApp: +91 9968896059";
+const commandMenu =
+  `*Commands:*\n` +
+  `/order <orderId> - Get order details\n` +
+  `/product <product name> - Get product info\n` +
+  `/user <email> - Get user details\n` +
+  `/contact <your message> - Contact admin\n` +
+  `/help - Show this menu\n\n` +
+  `${adminContact}`;
 
-// 2. /help handler (same as above, or even more detailed)
-bot.command('help', (ctx) =>
-  ctx.reply(
-    `*Harshportal Bot Help:*\n\n` +
-    `/order <orderId> - Show your order status\n` +
-    `/product <product name> - Look up product details\n` +
-    `/user <email> - Look up user info\n` +
-    `/help - Show this menu\n\n` +
-    `Try typing: /product Netflix`
-  )
-);
+bot.start((ctx) => ctx.reply(
+  `👋 Welcome to Harshportal Support Bot!\n\nYou can ask about your orders, products, account, or any help you need.\n\n${commandMenu}`
+));
+bot.command('help', (ctx) => ctx.reply(commandMenu));
 
-// 3. Order status lookup
-bot.command('order', async (ctx) => {
-  const args = ctx.message.text.split(' ').slice(1);
-  const orderId = args[0];
-  if (!orderId) return ctx.reply('Please provide an order ID. Example: /order 12345');
+// 2. Contact admin handler (user to admin relay)
+bot.command('contact', async (ctx) => {
+  const msg = ctx.message.text.split(' ').slice(1).join(' ');
+  if (!msg) return ctx.reply('Please type your message after /contact.');
 
-  const { data, error } = await supabase
-    .from('orders')
-    .select('*')
-    .eq('id', orderId)
-    .single();
-
-  if (error || !data) return ctx.reply('Order not found or error.');
-
-  ctx.reply(`Order #${data.id}\nStatus: ${data.status}\nCustomer: ${data.customer}\nTotal: ₹${data.total}\nDate: ${data.date}`);
+  await bot.telegram.sendMessage(
+    ADMIN_ID,
+    `📩 New message from @${ctx.from.username || ctx.from.first_name} (ID: ${ctx.from.id}):\n\n${msg}`
+  );
+  ctx.reply('Your message has been sent to the admin. You will get a reply here soon!');
 });
 
-// 4. Product lookup
-bot.command('product', async (ctx) => {
+// 3. Admin reply handler (admin to user relay)
+bot.command('reply', async (ctx) => {
+  // Only allow admin to use this
+  if (ctx.from.id !== ADMIN_ID) return;
+
   const args = ctx.message.text.split(' ').slice(1);
-  const name = args.join(' ');
-  if (!name) return ctx.reply('Please provide a product name. Example: /product Netflix');
+  const userId = args.shift();
+  const replyMsg = args.join(' ');
+  if (!userId || !replyMsg) return ctx.reply('Usage: /reply <user_id> <message>');
 
-  const { data, error } = await supabase
-    .from('products')
-    .select('*')
-    .ilike('name', `%${name}%`)
-    .limit(1)
-    .single();
-
-  if (error || !data) return ctx.reply('Product not found.');
-  ctx.reply(`Product: ${data.name}\nPrice: ₹${data.price}\nCategory: ${data.category}\nDescription: ${data.description}`);
+  await bot.telegram.sendMessage(userId, `💬 Admin: ${replyMsg}`);
+  ctx.reply('Reply sent to user.');
 });
 
-// 5. User lookup
-bot.command('user', async (ctx) => {
-  const args = ctx.message.text.split(' ').slice(1);
-  const email = args.join(' ');
-  if (!email) return ctx.reply('Please provide a user email. Example: /user harsh@gmail.com');
-
-  const { data, error } = await supabase
-    .from('users')
-    .select('*')
-    .ilike('email', `%${email}%`)
-    .single();
-
-  if (error || !data) return ctx.reply('User not found.');
-  ctx.reply(`User: ${data.email}\nName: ${data.name}\nStatus: ${data.status}`);
+// 4. Greet handler
+bot.hears(/^(hi|hello|hey|hii|hiiii|hola|yo|sup)$/i, (ctx) => {
+  ctx.reply('Hello! 👋 How can I help you today?');
 });
 
-// 6. Greetings handler
-bot.on('text', async (ctx) => {
+// 5. (Optional) FAQ fallback (requires Supabase "faqs" table)
+bot.on('text', async (ctx, next) => {
+  // If user used /contact or /reply, skip FAQ fallback
+  if (ctx.message.text.startsWith('/contact') || ctx.message.text.startsWith('/reply')) return next();
+
+  // If Supabase is not configured, skip this handler
+  if (!supabaseUrl || !supabaseKey) return next();
+
+  // Simple FAQ fallback
   const userText = ctx.message.text;
   const { data, error } = await supabase
     .from('faqs')
@@ -100,10 +85,14 @@ bot.on('text', async (ctx) => {
     ctx.reply(
       "Sorry, I do not have an answer for that yet.\n\n" +
       "💡 *Tip*: Use /help to see all commands!\n" +
-      "Or contact support@harshportal.in."
+      `${adminContact}`
     );
   }
 });
 
+// --- LAUNCH THE BOT ---
 bot.launch();
 console.log('Harshportal Bot is running...');
+
+process.on('SIGINT', () => bot.stop('SIGINT'));
+process.on('SIGTERM', () => bot.stop('SIGTERM'));
