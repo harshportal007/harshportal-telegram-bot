@@ -37,13 +37,14 @@ bot.command('help', (ctx) => ctx.reply(commandMenu));
 bot.command('contact', async (ctx) => {
   const msg = ctx.message.text.split(' ').slice(1).join(' ');
   if (!msg) return ctx.reply('Please type your message after /contact.');
-
+  console.log('Relaying message to admin:', ADMIN_ID, msg, ctx.from);
   await bot.telegram.sendMessage(
     ADMIN_ID,
     `📩 New message from @${ctx.from.username || ctx.from.first_name} (ID: ${ctx.from.id}):\n\n${msg}`
   );
   ctx.reply('Your message has been sent to the admin. You will get a reply here soon!');
 });
+
 
 // 3. Admin reply handler (admin to user relay)
 bot.command('reply', async (ctx) => {
